@@ -266,9 +266,9 @@ int main(int argc, const char *argv[])
 
                     //// STUDENT ASSIGNMENT
                     //// TASK FP.1 -> match list of 3D objects (vector<BoundingBox>) between current and previous frame
-        	    //// (implement ->matchBoundingBoxes)
+        	        //// (implement ->matchBoundingBoxes)
                     map<int, int> bbBestMatches;
-        	    // associate bounding boxes between current and previous frame using keypoint matches
+        	        // associate bounding boxes between current and previous frame using keypoint matches
                     matchBoundingBoxes(matches, bbBestMatches, *(dataBuffer.end()-2), *(dataBuffer.end()-1)); 
                     //// EOF STUDENT ASSIGNMENT
 
@@ -315,9 +315,9 @@ int main(int argc, const char *argv[])
                             //// TASK FP.4 -> compute time-to-collision based on camera (implement -> computeTTCCamera)
                             double ttcCamera;
                             clusterKptMatchesWithROI(*currBB, (dataBuffer.end() - 2)->keypoints, (dataBuffer.end() - 1)->keypoints,
-        					     (dataBuffer.end() - 1)->kptMatches);                    
+        					                         (dataBuffer.end() - 1)->kptMatches);                    
                             computeTTCCamera((dataBuffer.end() - 2)->keypoints, (dataBuffer.end() - 1)->keypoints,
-        				     currBB->kptMatches, sensorFrameRate, ttcCamera);
+        				                     currBB->kptMatches, sensorFrameRate, ttcCamera);
                             //// EOF STUDENT ASSIGNMENT
 
                             bVis = true;

@@ -222,7 +222,7 @@ void computeTTCLidar(std::vector<LidarPoint> &lidarPointsPrev,
     long medCurrIndex = floor(lidarPointsCurr.size() / 2.0);
     double medXPrev = lidarPointsPrev[medPrevIndex].x;
     double medXCurr = lidarPointsCurr[medCurrIndex].x;
-    
+
     // find closest distance to Lidar points within ego lane
     double minXPrev = 1e9, minXCurr = 1e9;
     for (auto it = lidarPointsPrev.begin(); it != lidarPointsPrev.end(); ++it)
@@ -250,7 +250,7 @@ void computeTTCLidar(std::vector<LidarPoint> &lidarPointsPrev,
     TTC = TTC2;
 }
 
-
+/*
 
 void matchBoundingBoxes(std::vector<cv::DMatch> &matches, std::map<int, int> &bbBestMatches, DataFrame &prevFrame, DataFrame &currFrame)
 {
@@ -305,5 +305,83 @@ void matchBoundingBoxes(std::vector<cv::DMatch> &matches, std::map<int, int> &bb
     bool bMsg = true;
     if (bMsg)
         for (int i = 0; i < p; i++)
+             cout << "Box " << i << " matches " << bbBestMatches[i]<< " box" << endl;
+}
+
+*/
+
+void matchBoundingBoxes(std::vector<cv::DMatch> &matches, std::map<int, int> &bbBestMatches, DataFrame &prevFrame, DataFrame &currFrame)
+{
+    // ...
+    int np = prevFrame.boundingBoxes.size();
+    int nc = currFrame.boundingBoxes.size();
+    cout << "matchBoundingBoxes " << matches.size() << " matches np = "  << np << " nc = " << nc << endl;
+    int pt_matches[np][nc];
+    for (int i = 0; i < np; i++) 
+        for (int j = 0; j < nc; j++) 
+            pt_matches[i][j] = 0;
+
+    for (auto it = matches.begin(); it != matches.end() - 1; ++it)     
+    {
+        // get current keypoint and its matched partner in the prev. frame
+        cv::KeyPoint kpCurr = currFrame.keypoints[it->trainIdx];
+        cv::KeyPoint kpPrev = prevFrame.keypoints[it->queryIdx];
+
+	bool prev_found = false;
+        std::vector<int> prev_ids;
+        for (int i = 0; i < np; i++) 
+        {
+            if (prevFrame.boundingBoxes[i].roi.contains(cv::Point(kpPrev.pt.x, kpPrev.pt.y)))
+            {
+                prev_found = true;
+                prev_ids.push_back(i);
+            }
+        }
+
+	bool curr_found = false;
+        std::vector<int> curr_ids;
+        for (int i = 0; i < nc; i++) 
+        {
+            if (currFrame.boundingBoxes[i].roi.contains(cv::Point(kpCurr.pt.x, kpCurr.pt.y)))
+            {
+                curr_found = true;
+                curr_ids.push_back(i);
+            }
+        }
+
+
+        if (prev_found && curr_found)
+        {
+            for (auto prev_id: prev_ids)
+                for (auto curr_id: curr_ids)
+                     pt_matches[prev_id][curr_id] += 1;
+        }
+    }
+
+    for (int i = 0; i < np; i++)
+    {
+         for (int j = 0; j < nc; j++)
+         {
+	     cout << pt_matches[i][j] << " ";
+	 }
+	 cout << endl;
+    }
+    for (int i = 0; i < np; i++)
+    {	
+         int max_count = 0;
+         int max_id = 0;
+         for (int j = 0; j < nc; j++)
+         {
+            if (pt_matches[i][j] > max_count)
+            {
+                max_count = pt_matches[i][j];
+                max_id = j;
+            }
+            bbBestMatches[i] = max_id;
+        }
+    }
+    bool bMsg = true;
+    if (bMsg)
+        for (int i = 0; i < np; i++)
              cout << "Box " << i << " matches " << bbBestMatches[i]<< " box" << endl;
 }
