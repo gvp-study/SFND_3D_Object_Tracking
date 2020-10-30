@@ -130,7 +130,7 @@ void show3DObjects(std::vector<BoundingBox> &boundingBoxes, cv::Size worldSize, 
 
     if(bWait)
     {
-        cv::waitKey(0); // wait for key to be pressed
+    //    cv::waitKey(0); // wait for key to be pressed
     }
 }
 
@@ -203,6 +203,7 @@ void computeTTCCamera(std::vector<cv::KeyPoint> &kptsPrev, std::vector<cv::KeyPo
         dT = 1.0 / frameRate;
     TTC = -dT / (1.0 - medDistRatio);
     // EOF STUDENT TASK
+    cout << "TTC Camera " << TTC << endl;
 }
 
 
@@ -215,6 +216,13 @@ void computeTTCLidar(std::vector<LidarPoint> &lidarPointsPrev,
         dT = 1.0/frameRate;
     double laneWidth = 4.0; // assumed width of the ego lane
 
+    std::sort(lidarPointsPrev.begin(), lidarPointsPrev.end(), [](LidarPoint a, LidarPoint b) {return a.x < b.x; });
+    std::sort(lidarPointsCurr.begin(), lidarPointsCurr.end(), [](LidarPoint a, LidarPoint b) {return a.x < b.x; });
+    long medPrevIndex = floor(lidarPointsPrev.size() / 2.0);
+    long medCurrIndex = floor(lidarPointsCurr.size() / 2.0);
+    double medXPrev = lidarPointsPrev[medPrevIndex].x;
+    double medXCurr = lidarPointsCurr[medCurrIndex].x;
+    
     // find closest distance to Lidar points within ego lane
     double minXPrev = 1e9, minXCurr = 1e9;
     for (auto it = lidarPointsPrev.begin(); it != lidarPointsPrev.end(); ++it)
@@ -237,6 +245,9 @@ void computeTTCLidar(std::vector<LidarPoint> &lidarPointsPrev,
 
     // compute TTC from both measurements
     TTC = minXCurr * dT / (minXPrev - minXCurr);
+    double    TTC2 = medXCurr * dT / (medXPrev - medXCurr);
+    cout << "TTC Lidar " << TTC << " " << TTC2 << endl;
+    TTC = TTC2;
 }
 
 
@@ -248,6 +259,9 @@ void matchBoundingBoxes(std::vector<cv::DMatch> &matches, std::map<int, int> &bb
     int c = currFrame.boundingBoxes.size();
     cout << "matchBoundingBoxes " << matches.size() << " matches p = "  << p << " c = " << c << endl;
     int pt_counts[p][c];
+    for (int i = 0; i < p; i++) 
+        for (int j = 0; j < c; j++) 
+            pt_counts[i][j] = 0;
     for (auto it = matches.begin(); it != matches.end() - 1; ++it)     {
         cv::KeyPoint query = prevFrame.keypoints[it->queryIdx];
         auto query_pt = cv::Point(query.pt.x, query.pt.y);
