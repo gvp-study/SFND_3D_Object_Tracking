@@ -14,19 +14,212 @@ In this final project, you will implement the missing parts in the schematic. To
 4. And lastly, you will conduct various tests with the framework. Your goal is to identify the most suitable detector/descriptor combination for TTC estimation and also to search for problems that can lead to faulty measurements by the camera or Lidar sensor. In the last course of this Nanodegree, you will learn about the Kalman filter, which is a great way to combine the two independent TTC measurements into an improved version which is much more reliable than a single sensor alone can be. But before we think about such things, let us focus on your final project in the camera course.
 
 # FP.1: MatchBoundingBoxes
-Implement the method "matchBoundingBoxes", which takes as input both the previous and the current data frames and provides as output the ids of the matched regions of interest (i.e. the boxID property). Matches must be the ones with the highest number of keypoint correspondences.
+The method "matchBoundingBoxes" takes as input both the previous and the current data frames and provides as output the ids of the matched regions of interest (i.e. the boxID property). The output is a list of pairs of bounding box ids that match between frames. The best match for a bounding box in the previous frame is the bounding box in the current frame with the highest number of keypoint correspondences. To do this, I use a 2D array of match counts called pt_matches.
+
+```cpp
+void matchBoundingBoxes(std::vector<cv::DMatch> &matches, std::map<int, int> &bbBestMatches, DataFrame &prevFrame, DataFrame &currFrame)
+{
+    // ...
+    int np = prevFrame.boundingBoxes.size();
+    int nc = currFrame.boundingBoxes.size();
+    cout << "matchBoundingBoxes " << matches.size() << " matches np = "  << np << " nc = " << nc << endl;
+    int pt_matches[np][nc];
+    for (int i = 0; i < np; i++)
+        for (int j = 0; j < nc; j++)
+            pt_matches[i][j] = 0;
+
+    for (auto it = matches.begin(); it != matches.end() - 1; ++it)     
+    {
+        // get current keypoint and its matched partner in the prev. frame
+        cv::KeyPoint kpCurr = currFrame.keypoints[it->trainIdx];
+        cv::KeyPoint kpPrev = prevFrame.keypoints[it->queryIdx];
+
+	bool prev_found = false;
+        std::vector<int> prev_ids;
+        for (int i = 0; i < np; i++)
+        {
+            if (prevFrame.boundingBoxes[i].roi.contains(cv::Point(kpPrev.pt.x, kpPrev.pt.y)))
+            {
+                prev_found = true;
+                prev_ids.push_back(i);
+            }
+        }
+
+	bool curr_found = false;
+        std::vector<int> curr_ids;
+        for (int i = 0; i < nc; i++)
+        {
+            if (currFrame.boundingBoxes[i].roi.contains(cv::Point(kpCurr.pt.x, kpCurr.pt.y)))
+            {
+                curr_found = true;
+                curr_ids.push_back(i);
+            }
+        }
+
+        if (prev_found && curr_found)
+        {
+            for (auto prev_id: prev_ids)
+                for (auto curr_id: curr_ids)
+                     pt_matches[prev_id][curr_id] += 1;
+        }
+    }
+
+    for (int i = 0; i < np; i++)
+    {
+         int max_count = 0;
+         int max_id = 0;
+         for (int j = 0; j < nc; j++)
+         {
+            if (pt_matches[i][j] > max_count)
+            {
+                max_count = pt_matches[i][j];
+                max_id = j;
+            }
+            bbBestMatches[i] = max_id;
+        }
+    }
+    bool bMsg = true;
+    if (bMsg)
+        for (int i = 0; i < np; i++)
+             cout << "Box " << i << " matches " << bbBestMatches[i]<< " box" << endl;
+}
+```
 
 # FP.2: ComputeTTCLidar
-Compute the time-to-collision in second for all matched 3D objects using only Lidar measurements from the matched bounding boxes between current and previous frame.
+Compute the time-to-collision in seconds for all matched 3D objects using only Lidar measurements from the matched bounding boxes between current and previous frame.
+I switched the implementation from the minimum X distance to the median. This helped with dealing with outliers.
 
+```cpp
+
+void computeTTCLidar(std::vector<LidarPoint> &lidarPointsPrev,
+                     std::vector<LidarPoint> &lidarPointsCurr, double frameRate, double &TTC)
+{
+     // auxiliary variables
+    double dT = 0.1;        // time between two measurements in seconds
+    if(frameRate > 0.0)
+        dT = 1.0/frameRate;
+    double laneWidth = 4.0; // assumed width of the ego lane
+
+    std::sort(lidarPointsPrev.begin(), lidarPointsPrev.end(), [](LidarPoint a, LidarPoint b) {return a.x < b.x; });
+    std::sort(lidarPointsCurr.begin(), lidarPointsCurr.end(), [](LidarPoint a, LidarPoint b) {return a.x < b.x; });
+    long medPrevIndex = floor(lidarPointsPrev.size() / 2.0);
+    long medCurrIndex = floor(lidarPointsCurr.size() / 2.0);
+    double medXPrev = lidarPointsPrev[medPrevIndex].x;
+    double medXCurr = lidarPointsCurr[medCurrIndex].x;
+    // Avoid division by zero.
+    if(fabs(medXPrev - medXCurr) > 0.0)
+	TTC = medXCurr * dT / (medXPrev - medXCurr);
+    else
+	TTC = NAN;
+    cout << "TTC Lidar " << TTC << endl;
+
+}
+
+
+```
 # FP.3: ComputeTTCCamera
 Prepare the TTC computation based on camera measurements by associating keypoint correspondences to the bounding boxes which enclose them. All matches which satisfy this condition must be added to a vector in the respective bounding box.
+
+```cpp
+void computeTTCCamera(std::vector<cv::KeyPoint> &kptsPrev, std::vector<cv::KeyPoint> &kptsCurr,
+                      std::vector<cv::DMatch> kptMatches, double frameRate, double &TTC, cv::Mat *visImg)
+{
+    // compute distance ratios between all matched keypoints
+    vector<double> distRatios; // stores the distance ratios for all keypoints between curr. and prev. frame
+    for (auto it1 = kptMatches.begin(); it1 != kptMatches.end() - 1; ++it1)
+    { // outer kpt. loop
+
+        // get current keypoint and its matched partner in the prev. frame
+        cv::KeyPoint kpOuterCurr = kptsCurr.at(it1->trainIdx);
+        cv::KeyPoint kpOuterPrev = kptsPrev.at(it1->queryIdx);
+
+        for (auto it2 = kptMatches.begin() + 1; it2 != kptMatches.end(); ++it2)
+        { // inner kpt.-loop
+
+            double minDist = 100.0; // min. required distance
+
+            // get next keypoint and its matched partner in the prev. frame
+            cv::KeyPoint kpInnerCurr = kptsCurr.at(it2->trainIdx);
+            cv::KeyPoint kpInnerPrev = kptsPrev.at(it2->queryIdx);
+
+            // compute distances and distance ratios
+            double distCurr = cv::norm(kpOuterCurr.pt - kpInnerCurr.pt);
+            double distPrev = cv::norm(kpOuterPrev.pt - kpInnerPrev.pt);
+
+            if (distPrev > std::numeric_limits<double>::epsilon() && distCurr >= minDist)
+            { // avoid division by zero
+
+                double distRatio = distCurr / distPrev;
+                distRatios.push_back(distRatio);
+            }
+        } // eof inner loop over all matched kpts
+    }     // eof outer loop over all matched kpts
+
+    // only continue if list of distance ratios is not empty
+    if (distRatios.size() == 0)
+    {
+        TTC = NAN;
+        return;
+    }
+
+    // STUDENT TASK (replacement for meanDistRatio)
+    std::sort(distRatios.begin(), distRatios.end());
+    long medIndex = floor(distRatios.size() / 2.0);
+    // compute median dist. ratio to remove outlier influence
+    double medDistRatio = distRatios.size() % 2 == 0 ? (distRatios[medIndex - 1] + distRatios[medIndex]) / 2.0 : distRatios[medIndex];
+    // Avoid division by zero.
+    if (fabs(medDistRatio - 1.0) < std::numeric_limits<double>::epsilon())
+    {
+        TTC = NAN;
+        return;
+    }
+
+    double dT = 0.1;
+    if(frameRate > 0.0)
+        dT = 1.0 / frameRate;
+    TTC = -dT / (1.0 - medDistRatio);
+    // EOF STUDENT TASK
+    cout << "TTC Camera " << TTC << endl;
+}
+
+```
 
 # FP.4: ClusterLidarWithROI
 Compute the time-to-collision in second for all matched 3D objects using only keypoint correspondences from the matched bounding boxes between current and previous frame.
 
+```cpp
+void clusterKptMatchesWithROI(BoundingBox &boundingBox, std::vector<cv::KeyPoint> &kptsPrev,
+			      std::vector<cv::KeyPoint> &kptsCurr, std::vector<cv::DMatch> &kptMatches)
+{
+    // Loop over all matches in the current frame
+    for (cv::DMatch match : kptMatches)
+    {
+        if (boundingBox.roi.contains(kptsCurr[match.trainIdx].pt))
+        {
+            boundingBox.kptMatches.push_back(match);
+        }
+    }
+}
+
+```
 # FP.5: Remove Outliers
 Find examples where the TTC estimate of the Lidar sensor does not seem plausible. Describe your observations and provide a sound argumentation why you think this happened.
+The primary cause for error in the Lidar TTC estimate is due to the outlier readings due to the nature of the Velodyne sensor. I mitigated this by replacing the minimum distance measured by the median distance. I also added a check to eliminate the division by zero in the TTC computation.
+
 
 # FP.6: Best Detector/Descriptor Combination
 Run several detector / descriptor combinations and look at the differences in TTC estimation. Find out which methods perform best and also include several examples where camera-based TTC estimation is way off. As with Lidar, describe your observations again and also look into potential reasons.
+
+
+There are several ways of showing which methods perform best. You can show some of the following metrics :
+- Average TTC in seconds
+- Standard Deviation in seconds
+- Minimum TTC in seconds
+
+I compared the TTC performance for all combinations of the keypoint detection and descriptor extraction in OpenCV. The results is a table of TTCs for each of the 18 frames and is in this file [performance.csv](./performance.csv). Based on this analysis, I would recommend these three combination of detector/descriptors in this order.
+
+| Rank | Detector+Descriptor | Time |
+|------|:-------------------:|------|
+| 1 | FAST+BRIEF| 10.68 ms |
+| 2 | ORB+BRIEF	| 10.69 ms |
+| 3 | FAST+ORB	| 11.37 ms |
