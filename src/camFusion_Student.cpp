@@ -12,7 +12,8 @@ using namespace std;
 
 
 // Create groups of Lidar points whose projection into the camera falls into the same bounding box
-void clusterLidarWithROI(std::vector<BoundingBox> &boundingBoxes, std::vector<LidarPoint> &lidarPoints, float shrinkFactor, cv::Mat &P_rect_xx, cv::Mat &R_rect_xx, cv::Mat &RT)
+void clusterLidarWithROI(std::vector<BoundingBox> &boundingBoxes, std::vector<LidarPoint> &lidarPoints,
+			 float shrinkFactor, cv::Mat &P_rect_xx, cv::Mat &R_rect_xx, cv::Mat &RT)
 {
     // loop over all Lidar points and associate them to a 2D bounding box
     cv::Mat X(4, 1, cv::DataType<double>::type);
@@ -136,7 +137,8 @@ void show3DObjects(std::vector<BoundingBox> &boundingBoxes, cv::Size worldSize, 
 
 
 // associate a given bounding box with the keypoints it contains
-void clusterKptMatchesWithROI(BoundingBox &boundingBox, std::vector<cv::KeyPoint> &kptsPrev, std::vector<cv::KeyPoint> &kptsCurr, std::vector<cv::DMatch> &kptMatches)
+void clusterKptMatchesWithROI(BoundingBox &boundingBox, std::vector<cv::KeyPoint> &kptsPrev,
+			      std::vector<cv::KeyPoint> &kptsCurr, std::vector<cv::DMatch> &kptMatches)
 {
     // Loop over all matches in the current frame
     for (cv::DMatch match : kptMatches) 
@@ -191,19 +193,23 @@ void computeTTCCamera(std::vector<cv::KeyPoint> &kptsPrev, std::vector<cv::KeyPo
         return;
     }
 
-
     // STUDENT TASK (replacement for meanDistRatio)
     std::sort(distRatios.begin(), distRatios.end());
     long medIndex = floor(distRatios.size() / 2.0);
     // compute median dist. ratio to remove outlier influence
     double medDistRatio = distRatios.size() % 2 == 0 ? (distRatios[medIndex - 1] + distRatios[medIndex]) / 2.0 : distRatios[medIndex]; 
+    if (medDistRatio <= 1.0)
+    {
+        TTC = NAN;
+        return;
+    }
 
     double dT = 0.1;
     if(frameRate > 0.0)
         dT = 1.0 / frameRate;
     TTC = -dT / (1.0 - medDistRatio);
     // EOF STUDENT TASK
-    cout << "TTC Camera " << TTC << endl;
+    cout << "TTC Camera " << TTC << " Med " << medIndex << " medDistRatio " << medDistRatio << endl;
 }
 
 
@@ -222,7 +228,7 @@ void computeTTCLidar(std::vector<LidarPoint> &lidarPointsPrev,
     long medCurrIndex = floor(lidarPointsCurr.size() / 2.0);
     double medXPrev = lidarPointsPrev[medPrevIndex].x;
     double medXCurr = lidarPointsCurr[medCurrIndex].x;
-
+/*
     // find closest distance to Lidar points within ego lane
     double minXPrev = 1e9, minXCurr = 1e9;
     for (auto it = lidarPointsPrev.begin(); it != lidarPointsPrev.end(); ++it)
@@ -245,70 +251,12 @@ void computeTTCLidar(std::vector<LidarPoint> &lidarPointsPrev,
 
     // compute TTC from both measurements
     TTC = minXCurr * dT / (minXPrev - minXCurr);
-    double    TTC2 = medXCurr * dT / (medXPrev - medXCurr);
-    cout << "TTC Lidar " << TTC << " " << TTC2 << endl;
-    TTC = TTC2;
-}
-
-/*
-
-void matchBoundingBoxes(std::vector<cv::DMatch> &matches, std::map<int, int> &bbBestMatches, DataFrame &prevFrame, DataFrame &currFrame)
-{
-    // ...
-    int p = prevFrame.boundingBoxes.size();
-    int c = currFrame.boundingBoxes.size();
-    cout << "matchBoundingBoxes " << matches.size() << " matches p = "  << p << " c = " << c << endl;
-    int pt_counts[p][c];
-    for (int i = 0; i < p; i++) 
-        for (int j = 0; j < c; j++) 
-            pt_counts[i][j] = 0;
-    for (auto it = matches.begin(); it != matches.end() - 1; ++it)     {
-        cv::KeyPoint query = prevFrame.keypoints[it->queryIdx];
-        auto query_pt = cv::Point(query.pt.x, query.pt.y);
-        bool query_found = false;
-        cv::KeyPoint train = currFrame.keypoints[it->trainIdx];
-        auto train_pt = cv::Point(train.pt.x, train.pt.y);
-        bool train_found = false;
-        std::vector<int> query_id, train_id;
-        for (int i = 0; i < p; i++) {
-            if (prevFrame.boundingBoxes[i].roi.contains(query_pt))             {
-                query_found = true;
-                query_id.push_back(i);
-             }
-        }
-        for (int i = 0; i < c; i++) {
-            if (currFrame.boundingBoxes[i].roi.contains(train_pt))             {
-                train_found= true;
-                train_id.push_back(i);
-            }
-        }
-        if (query_found && train_found)
-        {
-            for (auto id_prev: query_id)
-                for (auto id_curr: train_id)
-                     pt_counts[id_prev][id_curr] += 1;
-        }
-    }
-
-    for (int i = 0; i < p; i++)
-    {
-         int max_count = 0;
-         int id_max = 0;
-         for (int j = 0; j < c; j++)
-             if (pt_counts[i][j] > max_count)
-             {
-                  max_count = pt_counts[i][j];
-                  id_max = j;
-             }
-          bbBestMatches[i] = id_max;
-    }
-    bool bMsg = true;
-    if (bMsg)
-        for (int i = 0; i < p; i++)
-             cout << "Box " << i << " matches " << bbBestMatches[i]<< " box" << endl;
-}
-
 */
+    TTC = medXCurr * dT / (medXPrev - medXCurr);
+    cout << "TTC Lidar " << TTC << endl;
+
+}
+
 
 void matchBoundingBoxes(std::vector<cv::DMatch> &matches, std::map<int, int> &bbBestMatches, DataFrame &prevFrame, DataFrame &currFrame)
 {
@@ -349,7 +297,6 @@ void matchBoundingBoxes(std::vector<cv::DMatch> &matches, std::map<int, int> &bb
             }
         }
 
-
         if (prev_found && curr_found)
         {
             for (auto prev_id: prev_ids)
@@ -357,7 +304,7 @@ void matchBoundingBoxes(std::vector<cv::DMatch> &matches, std::map<int, int> &bb
                      pt_matches[prev_id][curr_id] += 1;
         }
     }
-
+/*
     for (int i = 0; i < np; i++)
     {
          for (int j = 0; j < nc; j++)
@@ -366,6 +313,7 @@ void matchBoundingBoxes(std::vector<cv::DMatch> &matches, std::map<int, int> &bb
 	 }
 	 cout << endl;
     }
+*/
     for (int i = 0; i < np; i++)
     {	
          int max_count = 0;

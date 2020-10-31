@@ -75,15 +75,17 @@ int main(int argc, const char *argv[])
     bool bVis = false;            // visualize results
     
 
-//    vector<string> detector_types = {"FAST", "BRISK", "ORB", "AKAZE", "SIFT", "SHITOMASI", "HARRIS"};
-//    vector<string> descriptor_types = {"BRIEF", "ORB", "BRISK", "FREAK", "AKAZE", "SIFT"};
-    vector<string> detector_types = {"FAST"};
-    vector<string> descriptor_types = {"BRIEF"};
-    // Open 3 files for recording data.
-    ofstream detector_file("../detectors.csv", std::ofstream::out);
-    ofstream descriptor_file("../descriptors.csv", std::ofstream::out);
+    vector<string> detector_types = {"FAST", "BRISK", "ORB", "AKAZE", "SIFT", "SHITOMASI", "HARRIS"};
+    vector<string> descriptor_types = {"BRIEF", "ORB", "BRISK", "FREAK", "AKAZE", "SIFT"};
+//    vector<string> detector_types = {"HARRIS"};
+//    vector<string> descriptor_types = {"BRISK"};
+//    vector<string> detector_types = {"SHITOMASI", "HARRIS", "FAST", "BRISK", "ORB", "AKAZE", "SIFT"};
+//    vector<string> descriptor_types = {"BRISK", "BRIEF", "ORB", "FREAK", "AKAZE", "SIFT"};
+    // Open perf files for recording data.
     ofstream performance_file("../performance.csv", std::ofstream::out);
 
+    performance_file << "Detector+Descriptor,FrameNumber,TTC_Lidar,TTC_Camera" << endl;
+    
     for(auto detector_type:detector_types)
     {
         bool write_detector_once = true;
@@ -94,17 +96,16 @@ int main(int argc, const char *argv[])
             // AKAZE descriptors dont seem to work!
             if((descriptor_type.compare("AKAZE") == 0))
                 continue;
+	    if((detector_type.compare("SIFT") == 0) && ((descriptor_type.compare("BRIEF") == 0) ||
+							(descriptor_type.compare("ORB") == 0)))
+                continue;
 
             cout << "------- DETECTOR TYPE: " << detector_type;
             cout << " DESCRIPTOR TYPE: " << descriptor_type << " -------" << endl;
 
             if(write_detector_once)
-            detector_file << detector_type;
-            descriptor_file << detector_type << "+" << descriptor_type;
-            performance_file << detector_type << "+" << descriptor_type;
 
             dataBuffer.clear();
-
 
             /* MAIN LOOP OVER ALL IMAGES */
 
@@ -133,7 +134,8 @@ int main(int argc, const char *argv[])
 
                 float confThreshold = 0.2;
                 float nmsThreshold = 0.4;   
-                bVis = true;     
+//                bVis = true;
+		bVis = false;
                 detectObjects((dataBuffer.end() - 1)->cameraImg, (dataBuffer.end() - 1)->boundingBoxes,
         		      confThreshold, nmsThreshold,
                               yoloBasePath, yoloClassesFile, yoloModelConfiguration, yoloModelWeights, bVis);
@@ -319,8 +321,17 @@ int main(int argc, const char *argv[])
                             computeTTCCamera((dataBuffer.end() - 2)->keypoints, (dataBuffer.end() - 1)->keypoints,
         				                     currBB->kptMatches, sensorFrameRate, ttcCamera);
                             //// EOF STUDENT ASSIGNMENT
-
+			    //
+			    //
+			    //
+			    if(ttcCamera == ttcCamera && ttcCamera < 20.0)
+			    {
+				performance_file << detector_type << "+" << descriptor_type;
+				performance_file << "," << imgIndex << "," << ttcLidar << "," << ttcCamera << endl;
+			    }
+			    
                             bVis = true;
+                            bVis = false;
                             if (bVis)
                             {
                                 cv::Mat visImg = (dataBuffer.end() - 1)->cameraImg.clone();
@@ -337,7 +348,7 @@ int main(int argc, const char *argv[])
                                 cv::namedWindow(windowName, 4);
                                 cv::imshow(windowName, visImg);
                                 cout << "Press key to continue to next frame" << endl;
-                                cv::waitKey(0);
+//                                cv::waitKey(0);
                             }
                             bVis = false;
 
@@ -347,7 +358,9 @@ int main(int argc, const char *argv[])
 
             } // eof loop over all images
         }
+	performance_file << endl;
     }
 
+    performance_file.close();
     return 0;
 }
