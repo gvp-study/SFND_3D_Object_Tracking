@@ -197,8 +197,9 @@ void computeTTCCamera(std::vector<cv::KeyPoint> &kptsPrev, std::vector<cv::KeyPo
     std::sort(distRatios.begin(), distRatios.end());
     long medIndex = floor(distRatios.size() / 2.0);
     // compute median dist. ratio to remove outlier influence
-    double medDistRatio = distRatios.size() % 2 == 0 ? (distRatios[medIndex - 1] + distRatios[medIndex]) / 2.0 : distRatios[medIndex]; 
-    if (medDistRatio <= 1.0)
+    double medDistRatio = distRatios.size() % 2 == 0 ? (distRatios[medIndex - 1] + distRatios[medIndex]) / 2.0 : distRatios[medIndex];
+    // Avoid division by zero.
+    if (fabs(medDistRatio - 1.0) < std::numeric_limits<double>::epsilon())
     {
         TTC = NAN;
         return;
@@ -228,6 +229,7 @@ void computeTTCLidar(std::vector<LidarPoint> &lidarPointsPrev,
     long medCurrIndex = floor(lidarPointsCurr.size() / 2.0);
     double medXPrev = lidarPointsPrev[medPrevIndex].x;
     double medXCurr = lidarPointsCurr[medCurrIndex].x;
+    // Avoid division by zero.
     if(fabs(medXPrev - medXCurr) > 0.0)
 	TTC = medXCurr * dT / (medXPrev - medXCurr);
     else
