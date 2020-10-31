@@ -209,7 +209,7 @@ void computeTTCCamera(std::vector<cv::KeyPoint> &kptsPrev, std::vector<cv::KeyPo
         dT = 1.0 / frameRate;
     TTC = -dT / (1.0 - medDistRatio);
     // EOF STUDENT TASK
-    cout << "TTC Camera " << TTC << " Med " << medIndex << " medDistRatio " << medDistRatio << endl;
+    cout << "TTC Camera " << TTC << endl;
 }
 
 
@@ -228,31 +228,10 @@ void computeTTCLidar(std::vector<LidarPoint> &lidarPointsPrev,
     long medCurrIndex = floor(lidarPointsCurr.size() / 2.0);
     double medXPrev = lidarPointsPrev[medPrevIndex].x;
     double medXCurr = lidarPointsCurr[medCurrIndex].x;
-/*
-    // find closest distance to Lidar points within ego lane
-    double minXPrev = 1e9, minXCurr = 1e9;
-    for (auto it = lidarPointsPrev.begin(); it != lidarPointsPrev.end(); ++it)
-    {
-        
-        if (abs(it->y) <= laneWidth / 2.0)
-        { // 3D point within ego lane?
-            minXPrev = minXPrev > it->x ? it->x : minXPrev;
-        }
-    }
-
-    for (auto it = lidarPointsCurr.begin(); it != lidarPointsCurr.end(); ++it)
-    {
-
-        if (abs(it->y) <= laneWidth / 2.0)
-        { // 3D point within ego lane?
-            minXCurr = minXCurr > it->x ? it->x : minXCurr;
-        }
-    }
-
-    // compute TTC from both measurements
-    TTC = minXCurr * dT / (minXPrev - minXCurr);
-*/
-    TTC = medXCurr * dT / (medXPrev - medXCurr);
+    if(fabs(medXPrev - medXCurr) > 0.0)
+	TTC = medXCurr * dT / (medXPrev - medXCurr);
+    else
+	TTC = NAN;
     cout << "TTC Lidar " << TTC << endl;
 
 }
