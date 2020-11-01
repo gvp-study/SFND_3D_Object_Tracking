@@ -216,6 +216,8 @@ There are several ways of showing which methods perform best. You can show some 
 - Standard Deviation in seconds
 - Minimum TTC in seconds
 
+<img src="./results/FAST+SIFT.png" />
+
 I compared the TTC performance for all combinations of the keypoint detection and descriptor extraction in OpenCV. The results is a table of TTCs for each of the 18 frames and is in this file [performance.csv](./performance.csv). Based on this analysis, I would recommend these three combination of detector/descriptors in this order.
 
 | Rank | Detector+Descriptor | Time |
