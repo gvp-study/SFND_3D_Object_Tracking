@@ -197,6 +197,11 @@ Compute the time-to-collision in seconds for all matched 3D objects using only k
 One part of the code for this task is to set the key point matches in the bounding box in the region of interest.
 
 ```cpp
+void clusterLidarWithROI(std::vector<BoundingBox> &boundingBoxes, std::vector<LidarPoint> &lidarPoints,
+			 float shrinkFactor, cv::Mat &P_rect_xx, cv::Mat &R_rect_xx, cv::Mat &RT)
+{
+  ...
+}
 void clusterKptMatchesWithROI(BoundingBox &boundingBox, std::vector<cv::KeyPoint> &kptsPrev,
 			      std::vector<cv::KeyPoint> &kptsCurr, std::vector<cv::DMatch> &kptMatches)
 {
@@ -214,6 +219,7 @@ void clusterKptMatchesWithROI(BoundingBox &boundingBox, std::vector<cv::KeyPoint
 # FP.5: Remove Outliers
 Find examples where the TTC estimate of the Lidar sensor does not seem plausible. Describe your observations and provide a sound argumentation why you think this happened.
 The primary cause for error in the Lidar TTC estimate is due to the outlier readings due to the nature of the Velodyne sensor. I mitigated this by replacing the minimum distance measured by the median distance. I also added a check to eliminate the division by zero in the TTC computation.
+
 ```cpp
 // Avoid division by zero.
 if (fabs(medDistRatio - 1.0) < std::numeric_limits<double>::epsilon())
