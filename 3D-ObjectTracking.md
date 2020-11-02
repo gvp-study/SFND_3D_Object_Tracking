@@ -2,7 +2,7 @@
 ## George V. Paul
 [Github link to this project is here](https://github.com/gvp-study/SFND_3D_Object_Tracking.git)
 
-Welcome to the final project of the camera course. By completing all the lessons, you now have a solid understanding of keypoint detectors, descriptors, and methods to match them between successive images. Also, you know how to detect objects in an image using the YOLO deep-learning framework. And finally, you know how to associate regions in a camera image with Lidar points in 3D space. Let's take a look at our program schematic to see what we already have accomplished and what's still missing.
+*Welcome to the final project of the camera course. By completing all the lessons, you now have a solid understanding of keypoint detectors, descriptors, and methods to match them between successive images. Also, you know how to detect objects in an image using the YOLO deep-learning framework. And finally, you know how to associate regions in a camera image with Lidar points in 3D space. Let's take a look at our program schematic to see what we already have accomplished and what's still missing.*
 
 <img src="images/course_code_structure.png" width="779" height="414" />
 
@@ -88,6 +88,7 @@ void matchBoundingBoxes(std::vector<cv::DMatch> &matches, std::map<int, int> &bb
 
 # FP.2: ComputeTTCLidar
 Compute the time-to-collision in seconds for all matched 3D objects using only Lidar measurements from the matched bounding boxes between current and previous frame.
+<img src="./results/Lidar-BB.png" />
 
 The original implementation for the midterm project was using the minimum x distance. This base implementation had higher incidences of outliers. So, I switched the implementation from the minimum X distance to the median as shown below. This reduced the incidences of outliers considerably.
 
@@ -124,6 +125,7 @@ void computeTTCLidar(std::vector<LidarPoint> &lidarPointsPrev,
 
 # FP.3: ComputeTTCCamera
 Prepare the TTC computation based on camera measurements by associating keypoint correspondences to the bounding boxes which enclose them. All matches which satisfy this condition must be added to a vector in the respective bounding box.
+<img src="./results/Camera-BB.png" />
 
 I altered the base implementation in the mid term project to account for all the floating point exceptions that seemed to occur more in the case of the camera. I suspect this is because of the occasional feature matching errors between frames.
 
@@ -231,22 +233,24 @@ else
 Run several detector / descriptor combinations and look at the differences in TTC estimation. Find out which methods perform best and also include several examples where camera-based TTC estimation is way off. As with Lidar, describe your observations again and also look into potential reasons.
 
 I compared the TTC performance for all combinations of the keypoint detection and descriptor extraction in OpenCV. The results is a table of TTCs for each of the 18 frames and is in this file [performance.csv](./performance.csv).
-Assuming that the true distance to the car in front of the ego car is going down in a fairly regular rate, the TTC_Lidar and TTC_Camera graphs have to trend down.
-I compared the more reliable Lidar data (blue graph) with the less reliable Camera data (red graph). When the TTC_Lidar and the TTC_Camera graphs match well, we can assume that the corresponding detector+descriptor will perform well.
-I computed the mean and standard deviation for all the  detector-descriptor combination by analyzing the performancde.csv file. An example of the results from various combinations is in [means.csv](./results/means.csv) shown below.
+After looking at the frames it can be assumed that the true distance to the car in front of the ego car is rises from 12 meters to 16 meters in the first 5 frames and then steadily goes down at a fairly regular rate for the rest of the frames. This can be seen in the initial hump in the graphs till the 5th frame after which the TTC_Lidar and TTC_Camera graphs have to trend down.
+I compared the more reliable Lidar data (blue graph) with the less reliable Camera data (red graph). When the TTC_Lidar and the TTC_Camera graphs match well, we can assume that the corresponding detector+descriptor combination is working relatively better.
 
-The worst performance seems to be the HARRIS and ORB detector as shown below. Obviously the negative TTC is probably because of wild mismatches between keypoints.
+I visually examined all the graphs for the various combinations in the results directory. The worst performance seems to be the HARRIS and ORB detector as shown below. Obviously the negative TTC is probably because of wild mismatches between keypoints.
 ## HARRIS+BRISK
 <img src="./results/HARRIS+BRISK.png" />
 ## ORB+BRIEF
 <img src="./results/ORB+BRIEF.png" />
-The best performance are detectors with FAST, BRISK or SIFT detectors as shown below.
+
+By visual examination the best performance are detectors with FAST+SIFT, AKAZE+SIFT as shown below.
 ## FAST+SIFT
 <img src="./results/FAST+SIFT.png" />
 ## AKAZE+SIFT
 <img src="./results/AKAZE+SIFT.png" />
 
-Based on this analysis, I would recommend these three combination of detector/descriptors in this order.
+I computed the mean and standard deviation for all the  detector-descriptor combination by analyzing the performance.csv file. An example of the results from various combinations is in [means.csv](./results/means.csv) and is shown below.
+
+Based on this analysis, I would recommend using the FAST+SIFT or AKAZE+SIFT detector-descriptor combinations for computing TTC.
 
 | Detector+Descriptor | Lidar_Mean | Lidar_Median | Lidar_Std | Camera_Mean | Camera_Median | Camera_Std|
 |------|:-------------------:|:------:|:------:|:------:|:------:|:------:|
