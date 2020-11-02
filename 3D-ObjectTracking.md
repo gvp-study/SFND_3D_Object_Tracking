@@ -236,8 +236,8 @@ I compared the more reliable Lidar data (blue graph) with the less reliable Came
 I computed the mean and standard deviation for all the  detector-descriptor combination by analyzing the performancde.csv file. An example of the results from various combinations is in [means.csv](./results/means.csv) shown below.
 
 The worst performance seems to be the HARRIS and ORB detector as shown below. Obviously the negative TTC is probably because of wild mismatches between keypoints.
-## HARRIS+SIFT
-<img src="./results/HARRIS+SIFT.png" />
+## HARRIS+BRISK
+<img src="./results/HARRIS+BRISK.png" />
 ## ORB+BRIEF
 <img src="./results/ORB+BRIEF.png" />
 The best performance are detectors with FAST, BRISK or SIFT detectors as shown below.
