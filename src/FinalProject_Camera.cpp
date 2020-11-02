@@ -74,13 +74,11 @@ int main(int argc, const char *argv[])
     vector<DataFrame> dataBuffer; // list of data frames which are held in memory at the same time
     bool bVis = false;            // visualize results
     
-
     vector<string> detector_types = {"FAST", "BRISK", "ORB", "AKAZE", "SIFT", "SHITOMASI", "HARRIS"};
     vector<string> descriptor_types = {"BRIEF", "ORB", "BRISK", "FREAK", "AKAZE", "SIFT"};
-//    vector<string> detector_types = {"HARRIS"};
-//    vector<string> descriptor_types = {"BRISK"};
-//    vector<string> detector_types = {"SHITOMASI", "HARRIS", "FAST", "BRISK", "ORB", "AKAZE", "SIFT"};
-//    vector<string> descriptor_types = {"BRISK", "BRIEF", "ORB", "FREAK", "AKAZE", "SIFT"};
+//    vector<string> detector_types = {"FAST"};
+//    vector<string> descriptor_types = {"SIFT"};
+    
     // Open perf files for recording data.
     ofstream performance_file("../performance.csv", std::ofstream::out);
 
@@ -139,7 +137,6 @@ int main(int argc, const char *argv[])
                 detectObjects((dataBuffer.end() - 1)->cameraImg, (dataBuffer.end() - 1)->boundingBoxes,
         		      confThreshold, nmsThreshold,
                               yoloBasePath, yoloClassesFile, yoloModelConfiguration, yoloModelWeights, bVis);
-                bVis = false;     
 
                 cout << "#2 : DETECT & CLASSIFY OBJECTS done" << endl;
 
@@ -168,7 +165,8 @@ int main(int argc, const char *argv[])
         			    shrinkFactor, P_rect_00, R_rect_00, RT);
 
                 // Visualize 3D objects
-                bVis = true;
+//                bVis = true;
+                bVis = false;
                 if(bVis)
                 {
                     show3DObjects((dataBuffer.end()-1)->boundingBoxes, cv::Size(4.0, 20.0), cv::Size(2000, 2000), true);
@@ -283,11 +281,13 @@ int main(int argc, const char *argv[])
                     /* COMPUTE TTC ON OBJECT IN FRONT */
 
                     // loop over all BB match pairs
-                    for (auto it1 = (dataBuffer.end() - 1)->bbMatches.begin(); it1 != (dataBuffer.end() - 1)->bbMatches.end(); ++it1)
+                    for (auto it1 = (dataBuffer.end() - 1)->bbMatches.begin();
+			 it1 != (dataBuffer.end() - 1)->bbMatches.end(); ++it1)
                     {
                         // find bounding boxes associates with current match
                         BoundingBox *prevBB, *currBB;
-                        for (auto it2 = (dataBuffer.end() - 1)->boundingBoxes.begin(); it2 != (dataBuffer.end() - 1)->boundingBoxes.end(); ++it2)
+                        for (auto it2 = (dataBuffer.end() - 1)->boundingBoxes.begin();
+			     it2 != (dataBuffer.end() - 1)->boundingBoxes.end(); ++it2)
                         {
                             if (it1->second == it2->boxID) // check wether current match partner corresponds to this BB
                             {
@@ -295,7 +295,8 @@ int main(int argc, const char *argv[])
                             }
                         }
 
-                        for (auto it2 = (dataBuffer.end() - 2)->boundingBoxes.begin(); it2 != (dataBuffer.end() - 2)->boundingBoxes.end(); ++it2)
+                        for (auto it2 = (dataBuffer.end() - 2)->boundingBoxes.begin();
+			     it2 != (dataBuffer.end() - 2)->boundingBoxes.end(); ++it2)
                         {
                             if (it1->first == it2->boxID) // check wether current match partner corresponds to this BB
                             {
@@ -330,7 +331,7 @@ int main(int argc, const char *argv[])
 				performance_file << "," << imgIndex << "," << ttcLidar << "," << ttcCamera << endl;
 			    }
 			    
-                            bVis = true;
+//                            bVis = true;
                             bVis = false;
                             if (bVis)
                             {
