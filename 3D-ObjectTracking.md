@@ -1,7 +1,6 @@
 # SFND 3D Object Tracking
 ## George V. Paul
-[Github link to this project is here](https://github.com/gvp-study/SFND_Object_Tracking)
-
+[Github link to this project is here](https://github.com/gvp-study/SFND_3D_Object_Tracking.git)
 
 Welcome to the final project of the camera course. By completing all the lessons, you now have a solid understanding of keypoint detectors, descriptors, and methods to match them between successive images. Also, you know how to detect objects in an image using the YOLO deep-learning framework. And finally, you know how to associate regions in a camera image with Lidar points in 3D space. Let's take a look at our program schematic to see what we already have accomplished and what's still missing.
 
@@ -16,7 +15,7 @@ In this final project, you will implement the missing parts in the schematic. To
 # FP.1: MatchBoundingBoxes
 The method "matchBoundingBoxes" takes as input both the previous and the current data frames and provides as output the ids of the matched regions of interest (i.e. the boxID property). The output is a list of pairs of bounding box ids that match between frames. The best match for a bounding box in the previous frame is the bounding box in the current frame with the highest number of keypoint correspondences.
 
-To do this, I iterated over the matched keypoints in list of matches and found the best bounding box correspondences between bounding boxes between frames. I use a 2D array pt_matches to count the match counts between bounding box ids as shown below.
+To do this, I iterated over the matched keypoints in the list of matches and found the best bounding box correspondences between bounding boxes between frames. I use a 2D array pt_matches to count the match counts between bounding box ids as shown below. This array is then checked for finding the best bounding box matches as shown below.
 
 ```cpp
 void matchBoundingBoxes(std::vector<cv::DMatch> &matches, std::map<int, int> &bbBestMatches, DataFrame &prevFrame, DataFrame &currFrame)
@@ -90,7 +89,7 @@ void matchBoundingBoxes(std::vector<cv::DMatch> &matches, std::map<int, int> &bb
 # FP.2: ComputeTTCLidar
 Compute the time-to-collision in seconds for all matched 3D objects using only Lidar measurements from the matched bounding boxes between current and previous frame.
 
-The original implementation for the midterm project was using the minimum x distance. This base implementation had higher incidences of outliers. So, I switched the implementation from the minimum X distance to the median. This reduced the incidences of outliers considerably.
+The original implementation for the midterm project was using the minimum x distance. This base implementation had higher incidences of outliers. So, I switched the implementation from the minimum X distance to the median as shown below. This reduced the incidences of outliers considerably.
 
 ```cpp
 
@@ -194,7 +193,7 @@ void computeTTCCamera(std::vector<cv::KeyPoint> &kptsPrev, std::vector<cv::KeyPo
 
 # FP.4: ClusterLidarWithROI
 Compute the time-to-collision in seconds for all matched 3D objects using only keypoint correspondences from the matched bounding boxes between current and previous frame.
-One part of the code for this task is to set the key point matches in the bounding box in the region of interest.
+One part of the code for this task is to set the key point matches in the bounding box in the region of interest as shown below.
 
 ```cpp
 void clusterLidarWithROI(std::vector<BoundingBox> &boundingBoxes, std::vector<LidarPoint> &lidarPoints,
@@ -231,21 +230,21 @@ else
 # FP.6: Best Detector/Descriptor Combination
 Run several detector / descriptor combinations and look at the differences in TTC estimation. Find out which methods perform best and also include several examples where camera-based TTC estimation is way off. As with Lidar, describe your observations again and also look into potential reasons.
 
-
-There are several ways of showing which methods perform best. You can show some of the following metrics :
-- Average TTC in seconds
-- Standard Deviation in seconds
-- Minimum TTC in seconds
-
-
 I compared the TTC performance for all combinations of the keypoint detection and descriptor extraction in OpenCV. The results is a table of TTCs for each of the 18 frames and is in this file [performance.csv](./performance.csv).
-I computed the mean and standard deviation for all the  detector-descriptor combination by analyzing the performancde.csv file. An example of the results from various combinations is in [means.csv](./results/means.csv). shown below.
+Assuming that the true distance to the car in front of the ego car is going down in a fairly regular rate, the TTC_Lidar and TTC_Camera graphs have to trend down.
+I compared the more reliable Lidar data (blue graph) with the less reliable Camera data (red graph). When the TTC_Lidar and the TTC_Camera graphs match well, we can assume that the corresponding detector+descriptor will perform well.
+I computed the mean and standard deviation for all the  detector-descriptor combination by analyzing the performancde.csv file. An example of the results from various combinations is in [means.csv](./results/means.csv) shown below.
+
+The worst performance seems to be the HARRIS and ORB detector as shown below. Obviously the negative TTC is probably because of wild mismatches between keypoints.
+## HARRIS+SIFT
+<img src="./results/HARRIS+SIFT.png" />
+## ORB+BRIEF
+<img src="./results/ORB+BRIEF.png" />
+The best performance are detectors with FAST, BRISK or SIFT detectors as shown below.
 ## FAST+SIFT
 <img src="./results/FAST+SIFT.png" />
-## BRISK+BRIEF
-<img src="./results/BRISK+BRIEF.png" />
-## SHITOMASI+FREAK
-<img src="./results/SHITOMASI+FREAK.png" />
+## AKAZE+SIFT
+<img src="./results/AKAZE+SIFT.png" />
 
 Based on this analysis, I would recommend these three combination of detector/descriptors in this order.
 
